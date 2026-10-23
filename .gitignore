@@ -1,19 +1,23 @@
-
 # Python
+.venv/
 __pycache__/
 *.py[cod]
-.venv/
-venv/
 
-# Environment variables
+# Environment secrets
 .env
+.env.*
 
-# Generated vector database
+# Keep an example environment file if you create one
+!.env.example
+
+# Generated vector database and uploaded documents
 chroma_db/
-
-# User-uploaded files
 uploads/
 
-# Editor files
+# Angular
+node_modules/
+dist/
+.angular/
+
+# IDE
 .vscode/
-.idea/
