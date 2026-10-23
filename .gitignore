@@ -1,5 +1,19 @@
-.env
-.venv/
+
+# Python
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Generated vector database
 chroma_db/
-documents/
+
+# User-uploaded files
+uploads/
+
+# Editor files
+.vscode/
+.idea/

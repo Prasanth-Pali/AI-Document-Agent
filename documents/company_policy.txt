@@ -1,0 +1,25 @@
+# Company Leave Policy
+
+Employees can apply for annual leave through the company's HR portal.
+
+Employees should submit leave requests at least five working days before the planned leave date.
+
+The manager must approve the leave request before the employee takes leave.
+
+For sick leave, employees should notify their manager as soon as possible.
+
+Employees can check their remaining leave balance through the HR portal.
+
+# IT Support Policy
+
+Employees who experience application access issues should raise a ticket with the IT support team.
+
+Every IT support ticket must include the application name, a description of the issue, and any relevant error message.
+
+Employees should never share their passwords or API keys in support tickets.
+
+# Work From Home Policy
+
+Employees must follow their department's work-from-home approval process.
+
+Employees should use company-approved devices and secure network connections when accessing company systems remotely.

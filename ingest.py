@@ -1,61 +1,170 @@
 
+import csv
+import io
 from pathlib import Path
 
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+import docx2txt
+from dotenv import load_dotenv
+from pypdf import PdfReader
+
 from langchain_chroma import Chroma
+from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-# 1. Define the document and vector database locations
-DOCUMENTS_DIR = Path("documents")
-CHROMA_DIR = "chroma_db"
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent
+
+DOCUMENTS_DIR = BASE_DIR / "documents"
+UPLOADS_DIR = BASE_DIR / "uploads"
+CHROMA_DIR = str(BASE_DIR / "chroma_db")
+
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".csv", ".txt"}
+
+# Create the required directories if they don't exist.
+DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Embedding model: runs locally.
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+
+# All documents use the same persistent ChromaDB collection.
+vector_store = Chroma(
+    collection_name="uploaded_documents",
+    embedding_function=embeddings,
+    persist_directory=CHROMA_DIR
+)
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
+    chunk_overlap=100
+)
 
 
-def main():
-    # 2. Load all TXT files from the documents folder
-    documents = []
+def extract_text(file_path: Path) -> str:
+    """Extract readable text from a supported document."""
 
-    for file_path in DOCUMENTS_DIR.glob("*.txt"):
-        loader = TextLoader(
-            str(file_path),
-            encoding="utf-8"
+    extension = file_path.suffix.lower()
+
+    if extension == ".txt":
+        return file_path.read_text(encoding="utf-8-sig")
+
+    if extension == ".pdf":
+        reader = PdfReader(str(file_path))
+        return "\n".join(
+            page.extract_text() or ""
+            for page in reader.pages
         )
 
-        loaded_documents = loader.load()
-        documents.extend(loaded_documents)
+    if extension == ".docx":
+        return docx2txt.process(str(file_path)) or ""
 
-    if not documents:
-        print("No TXT documents found in the documents folder.")
-        return
+    if extension == ".csv":
+        csv_text = file_path.read_text(encoding="utf-8-sig")
+        rows = csv.reader(io.StringIO(csv_text))
 
-    print(f"Loaded {len(documents)} document(s).")
+        return "\n".join(
+            " | ".join(row)
+            for row in rows
+        )
 
-    # 3. Split document text into smaller chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100
+    raise ValueError(f"Unsupported file type: {extension}")
+
+
+def index_file(
+    file_path: Path,
+    document_id: str,
+    source_filename: str
+) -> int:
+    """Extract text, create chunks and store embeddings in ChromaDB."""
+
+    text = extract_text(file_path)
+
+    if not text.strip():
+        raise ValueError(
+            "No readable text was found in the document."
+        )
+
+    text_chunks = text_splitter.split_text(text)
+
+    if not text_chunks:
+        raise ValueError("No text chunks were generated.")
+
+    # Replace any existing chunks belonging to this document ID.
+    vector_store.delete(
+        where={"document_id": document_id}
     )
 
-    chunks = text_splitter.split_documents(documents)
+    documents = []
+    ids = []
 
-    print(f"Created {len(chunks)} chunks.")
+    for index, chunk in enumerate(text_chunks):
+        documents.append(
+            Document(
+                page_content=chunk,
+                metadata={
+                    "document_id": document_id,
+                    "source": source_filename,
+                    "file_type": file_path.suffix.lower(),
+                    "chunk_index": index
+                }
+            )
+        )
 
-    # 4. Initialize the embedding model
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+        # Stable chunk IDs prevent duplicate chunks on re-indexing.
+        ids.append(f"{document_id}-chunk-{index}")
+
+    vector_store.add_documents(
+        documents=documents,
+        ids=ids
     )
 
-    # 5. Store document chunks and embeddings in ChromaDB
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory=CHROMA_DIR
-    )
+    return len(documents)
 
-    print(f"Successfully indexed {len(chunks)} chunks.")
-    print(f"Vector database location: {CHROMA_DIR}")
+
+def index_local_documents() -> None:
+    """Index local sample documents and saved UI uploads."""
+
+    files_to_index = []
+
+    # Existing local/sample files.
+    for file_path in DOCUMENTS_DIR.rglob("*"):
+        if (
+            file_path.is_file()
+            and file_path.suffix.lower() in ALLOWED_EXTENSIONS
+        ):
+            document_id = f"local-{file_path.name}"
+            files_to_index.append(
+                (file_path, document_id, file_path.name)
+            )
+
+    # UI-uploaded files are stored as uploads/<document_id>/<filename>.
+    for file_path in UPLOADS_DIR.glob("*/*"):
+        if (
+            file_path.is_file()
+            and file_path.suffix.lower() in ALLOWED_EXTENSIONS
+        ):
+            document_id = file_path.parent.name
+            files_to_index.append(
+                (file_path, document_id, file_path.name)
+            )
+
+    for file_path, document_id, filename in files_to_index:
+        try:
+            count = index_file(
+                file_path,
+                document_id,
+                filename
+            )
+            print(f"Indexed {filename}: {count} chunks")
+
+        except Exception as exc:
+            print(f"Failed to index {filename}: {exc}")
 
 
 if __name__ == "__main__":
-    main()
+    index_local_documents()
