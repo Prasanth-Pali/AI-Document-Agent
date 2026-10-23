@@ -1,228 +1,309 @@
-# AI Document RAG Agent 🤖
+# 🤖 AI Document Agent
 
-An AI-powered document assistant built with **Python, LangChain, Groq, Hugging Face Embeddings, and ChromaDB**. It retrieves relevant information from documents and uses an LLM to answer questions based on the retrieved content.
-
-The project demonstrates a basic **Retrieval-Augmented Generation (RAG) pipeline** and an AI agent that can search indexed documents using a custom LangChain tool.
+An AI-powered document assistant built with **Python, LangChain, Groq, Hugging Face Embeddings, ChromaDB, and FastAPI**. The application allows users to upload documents, index their contents, search for relevant information, and ask natural-language questions answered using the uploaded documents.
 
 ## ✨ Features
 
-- 📄 Load and process text documents (`.txt`)
-- ✂️ Split documents into smaller chunks with overlap
-- 🧠 Generate embeddings using Hugging Face
-- 🗄️ Store and retrieve document embeddings using ChromaDB
-- 🔍 Perform semantic search on indexed documents
-- 💬 Generate context-aware answers using the Groq LLM
-- 🛠️ Create a custom document-search tool using LangChain's `@tool`
-- 🤖 Build an AI agent using LangChain's `create_agent()`
-- 🔐 Load API credentials securely from environment variables
+- 📄 **Multi-format document support** — PDF, DOCX, TXT, and CSV.
+- 📂 **File storage** — saves original uploaded files in a local `uploads/` directory.
+- 🧩 **Document processing** — extracts text and splits it into manageable chunks.
+- 🔢 **Text embeddings** — uses `sentence-transformers/all-MiniLM-L6-v2` to convert text into vector representations.
+- 🗄️ **Vector database** — stores document chunks, embeddings, and metadata in persistent ChromaDB.
+- 🔍 **Semantic search** — retrieves relevant document chunks based on the user's question.
+- 🧠 **LLM integration** — uses a Groq-hosted language model to generate responses.
+- 🛠️ **LangChain Agent and tools** — provides `get_documents` and `search_documents` tools.
+- 🚀 **REST API** — FastAPI endpoints for document upload, document listing, and AI chat.
+- 🔗 **Source-aware responses** — retrieves source filenames and document metadata alongside relevant content.
 
 ## 🏗️ Architecture
 
 ```text
-                Text Documents
-                      |
-                      v
-                  ingest.py
-                      |
-             Load and Split Text
-                      |
-                      v
-             Hugging Face Embeddings
-                      |
-                      v
-                  ChromaDB
-                      |
-             Semantic Retrieval
-                      |
-                      v
-User Question --> AI Agent / RAG Chain
-                      |
-                 Groq LLM
-                      |
-                      v
-                Final Answer
+                    User / Client
+                         |
+                         v
+                  FastAPI Backend
+                         |
+             +-----------+-----------+
+             |           |           |
+             v           v           v
+          Upload       List        Chat
+             |          API         API
+             v                       |
+       Save Original                  v
+       File to uploads/          LangChain Agent
+             |                       |
+             v                +------+------+
+       Extract Text           |             |
+             |                v             v
+             v          get_documents  search_documents
+       Split into Chunks       |             |
+             |                 v             v
+             v            FastAPI GET    ChromaDB
+       Hugging Face          Endpoint    Vector Search
+       Embeddings                            |
+             |                               |
+             v                               v
+          ChromaDB <---------------- Retrieved Chunks
+                                             |
+                                             v
+                                       Groq LLM
+                                             |
+                                             v
+                                      Final Answer
 ```
 
-## 🧰 Tech Stack
+### 🔄 RAG Pipeline
+
+The Retrieval-Augmented Generation (RAG) pipeline follows these stages:
+
+1. **Load:** Read a document from disk and extract its text.
+2. **Split:** Divide the extracted text into overlapping chunks.
+3. **Embed:** Generate vector embeddings using the Hugging Face embedding model.
+4. **Store:** Persist chunks, vectors, and metadata in ChromaDB.
+5. **Retrieve:** Find relevant chunks using semantic similarity search.
+6. **Generate:** Provide the retrieved context to the LLM to produce an answer.
+
+Documents uploaded through the API are indexed during the upload process. The embedding model runs locally, while the LLM is accessed through Groq's API.
+
+## 🧰 Technology Stack
 
 | Technology | Purpose |
 |---|---|
-| Python | Application development |
-| LangChain | LLM, RAG, tools, and agent orchestration |
-| Groq | LLM inference |
-| Hugging Face | Text embedding generation |
-| Sentence Transformers | Local embedding model execution |
-| ChromaDB | Vector storage and similarity search |
-| python-dotenv | Environment variable management |
-
-### Models
-
-- **Embedding model:** `sentence-transformers/all-MiniLM-L6-v2`
-- **Chat model:** Configured through `ChatGroq` in the Python files. Use a model currently supported by your Groq account.
+| Python | Core application language |
+| LangChain | Agent creation, tools, prompts, and RAG orchestration |
+| Groq | Hosted LLM inference |
+| Hugging Face Sentence Transformers | Local text embeddings |
+| ChromaDB | Persistent vector storage and similarity search |
+| FastAPI | REST API backend |
+| Pydantic | API request validation |
+| PyPDF | PDF text extraction |
+| docx2txt | Word document text extraction |
+| Python CSV | CSV text extraction |
 
 ## 📁 Project Structure
 
 ```text
 AI-Document-Agent/
 │
-├── documents/
-│   └── company_policy.txt
+├── documents/          # Existing local/sample documents
+├── uploads/            # Original files uploaded through the API
+│   └── <document-id>/
+│       └── document.pdf
 │
-├── chroma_db/           # Generated vector database
+├── chroma_db/          # Persistent vector database
 │
-├── .env                 # API credentials (not committed)
-├── .gitignore
+├── api.py              # FastAPI upload, list, and chat endpoints
+├── ingest.py           # Text extraction, chunking, and indexing
+├── tools.py            # LangChain document tools
+├── agent.py            # LLM-powered Agent
+├── app.py              # Basic RAG implementation
+│
 ├── requirements.txt
-├── ingest.py             # Document loading and indexing
-├── app.py                # Basic RAG question-answering pipeline
-├── agent.py              # Tool-based AI document agent
+├── .env                # API credentials and configuration
+├── .gitignore
 └── README.md
 ```
 
+### 📌 Main Components
+
+- **`api.py`** — exposes REST endpoints and saves uploaded files before indexing them.
+- **`ingest.py`** — extracts document text, creates chunks, generates embeddings, and stores them in ChromaDB.
+- **`tools.py`** — implements `get_documents()` for listing files and `search_documents()` for searching document contents.
+- **`agent.py`** — creates the LangChain Agent and integrates it with the Groq LLM.
+- **`app.py`** — demonstrates a basic RAG pipeline without Agent tool selection.
+
 ## ⚙️ Prerequisites
 
-- Python 3.10 or a compatible version supported by the installed packages
-- A Groq API key
-- Internet access for installing dependencies and downloading the embedding model
+- Python 3.10 or a compatible version supported by the installed dependencies.
+- A Groq API key.
+- Internet connectivity for Groq API requests and the initial download of the embedding model.
+- Git for version control.
 
 ## 🚀 Getting Started
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Prasanth-Pali/AI-Document-Agent.git
 cd AI-Document-Agent
 ```
 
-### 2. Create and activate a virtual environment
+### 2. Create a Virtual Environment
+
+**Windows PowerShell:**
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Install dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure environment variables
+### 4. Configure Environment Variables
 
 Create a `.env` file in the project root:
 
-```env
-GROQ_API_KEY=your_actual_groq_api_key
+```dotenv
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=your_supported_groq_model
+API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Replace the placeholder with your own Groq API key. Never commit the `.env` file to GitHub.
+Replace the placeholder values with your actual configuration. Never commit API credentials to GitHub.
 
-### 5. Add documents
+### 5. Prepare Documents
 
-Place your sample `.txt` files inside the `documents/` directory.
+Place existing sample documents inside the `documents/` directory.
 
-The current ingestion script processes `.txt` files in that directory.
+Supported file formats:
 
-### 6. Index the documents
+- PDF (`.pdf`)
+- Microsoft Word (`.docx`)
+- Text (`.txt`)
+- Comma-separated values (`.csv`)
+
+To index local sample documents and previously saved uploads, run:
 
 ```bash
 python ingest.py
 ```
 
-This step loads the documents, splits the text into chunks, generates embeddings, and stores them in ChromaDB.
+This step is useful when indexing local files or rebuilding the index. Files uploaded through the API are indexed automatically.
 
-Run ingestion before using the RAG pipeline or agent.
-
-### 7. Run the basic RAG application
+### 6. Start the FastAPI Server
 
 ```bash
-python app.py
+uvicorn api:app --reload
 ```
 
-Ask questions about the indexed documents and receive answers based on the retrieved context.
+Open the interactive API documentation:
 
-### 8. Run the AI agent
+**http://127.0.0.1:8000/docs**
 
-```bash
-python agent.py
+## 🔌 API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | Check whether the API is running |
+| GET | `/health` | Health check |
+| POST | `/api/documents/upload` | Upload, save, and index a document |
+| GET | `/api/documents` | List local and uploaded documents |
+| POST | `/api/chat` | Ask a question using the AI Agent |
+
+### 📤 Upload a Document
+
+Use `POST /api/documents/upload` with a multipart form field named `file`.
+
+The endpoint:
+
+1. Validates the file extension and size.
+2. Saves the original file under `uploads/<document-id>/`.
+3. Extracts its text.
+4. Splits the text into chunks and generates embeddings.
+5. Stores the chunks and metadata in ChromaDB.
+6. Returns the document ID and indexing details.
+
+The configured maximum file size is 10 MB.
+
+### 📚 List Documents
+
+Call `GET /api/documents`.
+
+The response includes information such as:
+
+- Document ID
+- Filename
+- File type
+- File size
+- Storage location
+- File modification or upload timestamp
+
+This endpoint lists original files from the `documents/` and `uploads/` directories.
+
+### 💬 Ask a Question
+
+Call `POST /api/chat` with a JSON request body:
+
+```json
+{
+  "question": "What does the company leave policy say?"
+}
 ```
 
-The agent can decide to call the `search_documents` tool when it needs information from the indexed documents.
+The Agent selects the appropriate tool, retrieves relevant information when necessary, and uses the LLM to formulate a response.
 
-Type `exit` to stop the application.
+## 🛠️ Agent Tools
 
-## 💡 Example Questions
+### 1. `get_documents()`
 
-Using the sample company policy document, try asking:
+Retrieves the available document list through the FastAPI GET endpoint.
 
-- How many working days in advance should employees request annual leave?
-- Who must approve a leave request?
-- What information should an IT support ticket contain?
-- What security precautions are required when working from home?
-- What is the company's policy for sharing passwords?
+Example user question:
 
-If the requested information is not present in the documents, the assistant should state that it could not find the information rather than inventing an answer.
+> Which documents are available?
 
-## 🔎 How RAG Works
+The tool returns document metadata for the Agent to interpret.
 
-Retrieval-Augmented Generation combines document retrieval with language-model generation.
+### 2. `search_documents(question, document_id="")`
 
-1. **Load:** Read the source documents.
-2. **Split:** Divide the documents into smaller text chunks.
-3. **Embed:** Convert each chunk into a numerical vector.
-4. **Store:** Save the vectors and associated text in ChromaDB.
-5. **Retrieve:** Find relevant chunks for a user's question.
-6. **Generate:** Provide the retrieved context to the LLM to produce an answer.
+Searches the ChromaDB collection using vector similarity.
 
-## 🤖 Basic RAG vs. AI Agent
+- `question` specifies the information to find.
+- `document_id` optionally restricts the search to one indexed document.
+- An empty document ID searches across the collection.
 
-| Basic RAG (`app.py`) | AI Agent (`agent.py`) |
-|---|---|
-| Follows a predefined retrieval-and-answer pipeline | Can decide when to use an available tool |
-| Retrieves documents directly in application code | Uses the `search_documents` tool |
-| Calls the LLM to answer using retrieved context | Uses the LLM to decide and formulate a response |
-| Best for straightforward document Q&A | Demonstrates tool calling and agent orchestration |
+Example user question:
 
-## 🔐 Security and Best Practices
+> What are the eligibility requirements mentioned in the policy?
 
-- Keep API keys in `.env`.
-- Exclude `.env`, `.venv/`, `__pycache__/`, and `chroma_db/` from Git.
-- Do not upload confidential company documents or sensitive business information.
-- Use only documents you are authorized to process.
-- Avoid repeatedly running ingestion against the same persistent collection without handling existing records; duplicate chunks can accumulate.
+The tool retrieves relevant chunks and their source metadata. The Agent uses those results to formulate its answer.
 
-## 🔮 Future Enhancements
+## 🗃️ Storage Design
 
-- Add PDF document ingestion and page-level source citations.
-- Build a FastAPI service for the RAG pipeline.
-- Add a web interface for document uploads and questions.
-- Implement incremental document indexing and duplicate prevention.
-- Add structured logging, error handling, and automated tests.
-- Containerize the application with Docker.
-- Add conversation history and document metadata filtering.
+The project uses two separate types of storage.
 
-## 🎯 Learning Objectives
+**Original files — `documents/` and `uploads/`**
 
-This project provides hands-on experience with:
+These directories contain the source files from which text is extracted.
 
-- LLM integration using Groq
-- Embeddings and semantic search
-- Vector databases using ChromaDB
-- Retrieval-Augmented Generation
-- LangChain prompt templates and output parsing
-- Custom tools using `@tool`
-- AI agent creation using `create_agent()`
+**Vector database — `chroma_db/`**
 
-## 📜 License
+ChromaDB stores the extracted text chunks, vector embeddings, and associated metadata.
 
-👨‍💻 Author
+Original files are not stored inside ChromaDB. The vector database supports semantic retrieval, while the filesystem preserves the source documents.
 
-Pali Prasanth
+## 🔐 Security and Limitations
 
-GitHub: Prasanth-Pali
+- Keep API keys in environment variables.
+- Do not commit `.env`, uploaded files, or the local vector database.
+- The current local filesystem design is intended for development and learning.
+- Scanned PDFs may require OCR because ordinary PDF text extraction does not recognize text in images.
+- The current design does not implement user authentication or per-user document isolation.
+- Production deployments should add stronger file validation, upload limits, access controls, safe error handling, and reliable rollback or cleanup for failed indexing operations.
+- Semantic search results depend on document quality, chunking, embeddings, and retrieval settings.
 
-Project: AI Document RAG Agent
+## 🗺️ Future Enhancements
 
-Built to explore Retrieval-Augmented Generation (RAG), LangChain tools, AI agents, embeddings, and vector databases using Python and Groq.
+- 🖥️ Angular UI for document upload, document listing, and chat.
+- 📑 Display source documents and relevant text snippets alongside answers.
+- 🗑️ Delete documents and their corresponding vector records.
+- 🔄 Re-index updated files and handle duplicate uploads reliably.
+- 🔒 Authentication and user-specific document access.
+- 🐳 Docker containerization.
+- ☁️ Cloud deployment and CI/CD integration.
+- 📊 Logging, monitoring, and improved API error handling.
 
-This project is intended for learning and portfolio demonstration. Add a license file if you plan to distribute it under specific open-source terms.
+## 👨‍💻 Author
+
+**Pali Prasanth**
+
+- GitHub: https://github.com/Prasanth-Pali
+- Project Repository: https://github.com/Prasanth-Pali/AI-Document-Agent
+
+---
+
+*Built to explore LLM integration, LangChain agents, tool calling, embeddings, vector databases, and Retrieval-Augmented Generation (RAG) in a practical Python application.*
