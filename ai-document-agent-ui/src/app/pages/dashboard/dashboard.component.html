@@ -1,0 +1,336 @@
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">D</div>
+            <div class="brand-text">
+                <h2>DocuMind</h2>
+                <span>AI Document Agent</span>
+            </div>
+        </div>
+
+        <div class="nav-label">WORKSPACE</div>
+
+        <nav class="navigation">
+            <a class="nav-item active" href="#">
+                <span class="nav-icon">▦</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a class="nav-item" href="#documents">
+                <span class="nav-icon">▤</span>
+                <span>My Documents</span>
+            </a>
+
+            <a class="nav-item" href="#chat">
+                <span class="nav-icon">✧</span>
+                <span>AI Assistant</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-info">
+            <div class="info-icon">✦</div>
+            <h3>Your knowledge hub</h3>
+            <p>Upload documents and get answers powered by AI.</p>
+        </div>
+
+        <div class="sidebar-footer">
+            <span class="status-dot"></span>
+            <span>Workspace active</span>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <header class="topbar">
+            <div>
+                <p class="breadcrumb">WORKSPACE / OVERVIEW</p>
+                <h1>Dashboard</h1>
+                <p class="page-subtitle">
+                    Manage your documents and discover insights with AI.
+                </p>
+            </div>
+
+            <div class="profile">
+                <div class="profile-avatar">P</div>
+                <div class="profile-details">
+                    <strong>My Workspace</strong>
+                    <span>Document Assistant</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Welcome banner -->
+        <section class="welcome-banner">
+            <div class="welcome-content">
+                <span class="welcome-badge">
+                    <span class="welcome-sparkle">✦</span>
+                    YOUR AI WORKSPACE
+                </span>
+
+                <h2>Knowledge at your fingertips.</h2>
+
+                <p>
+                    Bring your documents together and let AI help you
+                    find the answers that matter.
+                </p>
+
+                <a href="#upload" class="banner-button">
+                    Upload a document <span>→</span>
+                </a>
+            </div>
+
+            <div class="banner-decoration" aria-hidden="true">
+                <div class="decoration-circle circle-one"></div>
+                <div class="decoration-circle circle-two"></div>
+                <div class="document-illustration">
+                    <div class="illustration-top">AI</div>
+                    <div class="illustration-line line-long"></div>
+                    <div class="illustration-line"></div>
+                    <div class="illustration-line line-short"></div>
+                    <div class="illustration-sparkle">✦</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="stats-grid">
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon blue-icon">▤</div>
+                    <span class="stat-tag blue-tag">LIBRARY</span>
+                </div>
+
+                <p class="stat-label">Total documents</p>
+                <h3>{{ documents.length }}</h3>
+                <p class="stat-description">Documents in your workspace</p>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon red-icon">✧</div>
+                    <span class="stat-tag red-tag">AI POWERED</span>
+                </div>
+
+                <p class="stat-label">Knowledge search</p>
+                <h3>Semantic</h3>
+                <p class="stat-description">Find information by meaning</p>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon green-icon">✓</div>
+                    <span class="stat-tag green-tag">READY</span>
+                </div>
+
+                <p class="stat-label">Document assistant</p>
+                <h3>AI Chat</h3>
+                <p class="stat-description">Ask questions about your files</p>
+            </article>
+        </section>
+
+        <!-- Upload and document library -->
+        <section class="content-grid">
+            <article class="panel upload-panel" id="upload">
+                <div class="section-heading">
+                    <div>
+                        <span class="section-kicker">ADD CONTENT</span>
+                        <h2>Upload documents</h2>
+                        <p>Add files to your AI knowledge base.</p>
+                    </div>
+
+                    <div class="heading-icon upload-heading-icon">↑</div>
+                </div>
+
+                <div class="upload-area" [class.uploading]="isUploading">
+                    <div class="upload-graphic">
+                        <div class="upload-graphic-icon">↑</div>
+                        <span class="upload-orbit orbit-one"></span>
+                        <span class="upload-orbit orbit-two"></span>
+                    </div>
+
+                    <h3>{{ isUploading ? 'Processing document...' : 'Drop your knowledge here' }}</h3>
+
+                    <p>
+                        {{ isUploading
+                        ? 'Uploading and indexing your file. Please wait.'
+                        : 'Select a document from your computer to get started.' }}
+                    </p>
+
+                    <input #fileInput type="file" accept=".pdf,.docx,.csv,.txt" hidden
+                        (change)="onFileSelected($event)" />
+
+                    <button class="primary-button" type="button" [disabled]="isUploading" (click)="fileInput.click()">
+                        {{ isUploading ? 'Please wait...' : 'Choose a file' }}
+                        <span>↑</span>
+                    </button>
+
+                    <div class="file-support">
+                        <span>PDF</span>
+                        <span>DOCX</span>
+                        <span>CSV</span>
+                        <span>TXT</span>
+                    </div>
+
+                    <span class="helper-text">Maximum file size: 10 MB</span>
+                </div>
+
+                <div class="feedback-message success-message" *ngIf="successMessage">
+                    <span>✓</span>
+                    <p>{{ successMessage }}</p>
+                </div>
+
+                <div class="feedback-message error-message" *ngIf="errorMessage">
+                    <span>!</span>
+                    <p>{{ errorMessage }}</p>
+                </div>
+            </article>
+
+            <article class="panel documents-panel" id="documents">
+                <div class="section-heading">
+                    <div>
+                        <span class="section-kicker">YOUR LIBRARY</span>
+                        <h2>Recent documents</h2>
+                        <p>Browse your available files.</p>
+                    </div>
+
+                    <button class="refresh-button" type="button" [disabled]="isLoading" (click)="loadDocuments()"
+                        aria-label="Refresh documents" title="Refresh documents">
+                        ↻
+                    </button>
+                </div>
+
+                <div class="loading-state" *ngIf="isLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading your documents...</p>
+                </div>
+
+                <div class="empty-state" *ngIf="!isLoading && documents.length === 0">
+                    <div class="empty-illustration">
+                        <span class="empty-back-sheet"></span>
+                        <span class="empty-front-sheet">▤</span>
+                    </div>
+
+                    <h3>Your library is waiting</h3>
+                    <p>Upload your first document to see it here.</p>
+
+                    <a href="#upload" class="empty-link">Upload your first file →</a>
+                </div>
+
+                <div class="document-list" *ngIf="documents.length > 0">
+                    <div class="document-item" *ngFor="let document of documents">
+                        <div class="document-file-icon" [ngClass]="{
+                'pdf-file': document.file_type === '.pdf',
+                'word-file': document.file_type === '.docx',
+                'csv-file': document.file_type === '.csv',
+                'text-file': document.file_type === '.txt'
+              }">
+                            {{ document.file_type === '.pdf' ? 'PDF' :
+                            document.file_type === '.docx' ? 'DOC' :
+                            document.file_type === '.csv' ? 'CSV' : 'TXT' }}
+                        </div>
+
+                        <div class="document-info">
+                            <h3 [title]="document.filename">
+                                {{ document.filename }}
+                            </h3>
+
+                            <p>
+                                {{ (document.size_bytes / 1024).toFixed(1) }} KB
+                                <span class="metadata-dot">·</span>
+                                {{ document.location === 'uploaded' ? 'Uploaded file' : 'Local file' }}
+                            </p>
+                        </div>
+
+                        <span class="document-status" title="Listed in the document library">
+                            <span class="status-dot"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="library-footer" *ngIf="documents.length > 0">
+                    <span>{{ documents.length }} document(s) available</span>
+                    <span class="library-footer-icon">✓</span>
+                </div>
+            </article>
+        </section>
+
+        <!-- AI Chat -->
+
+        <section class="panel chat-panel" id="chat">
+            <div class="section-heading">
+                <div>
+                    <span class="section-kicker">ASK YOUR KNOWLEDGE BASE</span>
+                    <h2>Chat with your documents</h2>
+                    <p>Ask questions and get answers based on your document content.</p>
+                </div>
+
+                <div class="ai-ready">
+                    <span class="status-dot"></span>
+                    AI workspace
+                </div>
+            </div>
+
+            <div class="chat-welcome" *ngIf="!answer && !isChatLoading && !chatError">
+                <div class="chat-orb">
+                    <span>✦</span>
+                </div>
+
+                <h3>What would you like to know?</h3>
+                <p>Ask a question about your indexed documents.</p>
+
+                <div class="suggestion-chips">
+                    <button type="button" (click)="question = 'Summarize the available documents'">
+                        Summarize documents
+                    </button>
+
+                    <button type="button" (click)="question = 'What are the key points in the documents?'">
+                        Find key information
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-loading" *ngIf="isChatLoading">
+                <div class="loading-spinner"></div>
+                <p>Searching your documents and generating an answer...</p>
+            </div>
+
+            <div class="answer-card" *ngIf="answer">
+                <div class="answer-heading">
+                    <span class="answer-icon">✦</span>
+                    <strong>AI Assistant</strong>
+                </div>
+
+                <p class="answer-text">{{ answer }}</p>
+            </div>
+
+            <div class="feedback-message error-message" *ngIf="chatError">
+                <span>!</span>
+                <p>{{ chatError }}</p>
+            </div>
+
+            <form class="chat-input-row" (submit)="$event.preventDefault(); askAI()">
+                <div class="chat-input-wrapper">
+                    <span class="chat-input-icon">✧</span>
+
+                    <input type="text" name="question" [(ngModel)]="question"
+                        placeholder="Ask a question about your documents..." [disabled]="isChatLoading" required />
+                </div>
+
+                <button class="ask-button" type="submit" [disabled]="isChatLoading || !question.trim()">
+                    {{ isChatLoading ? 'Thinking...' : 'Ask AI →' }}
+                </button>
+            </form>
+
+            <p class="chat-disclaimer">
+                AI-generated responses can be inaccurate. Verify important information against the source document.
+            </p>
+        </section>
+
+
+        <footer class="page-footer">
+            <span>DocuMind <span class="footer-heart">✦</span> AI Document Assistant</span>
+            <span>Powered by RAG · LangChain · ChromaDB</span>
+        </footer>
+    </main>
+</div>
