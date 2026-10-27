@@ -1,5 +1,4 @@
-
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, isDevMode } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -31,13 +30,18 @@ export interface ChatResponse {
   answer: string;
 }
 
+// In `ng serve` (development) call the local FastAPI server.
+// In the production build (inside Docker) use the same address as the page.
+const API_BASE = isDevMode() ? 'http://127.0.0.1:8000' : '';
+
 @Injectable({
   providedIn: 'root'
 })
 export class DocumentService {
   private http = inject(HttpClient);
 
-  private readonly apiUrl = 'http://127.0.0.1:8000/api/documents';
+  private apiUrl = `${API_BASE}/api/documents`;
+  private chatUrl = `${API_BASE}/api/chat`;
 
   getDocuments(): Observable<DocumentListResponse> {
     return this.http.get<DocumentListResponse>(this.apiUrl);
@@ -54,9 +58,9 @@ export class DocumentService {
   }
 
   askQuestion(question: string): Observable<ChatResponse> {
-  return this.http.post<ChatResponse>(
-    'http://127.0.0.1:8000/api/chat',
-    { question }
-  );
-}
+    return this.http.post<ChatResponse>(
+      this.chatUrl,
+      { question }
+    );
+  }
 }
