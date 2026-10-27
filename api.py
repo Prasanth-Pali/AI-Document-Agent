@@ -14,6 +14,9 @@ from ingest import (
     UPLOADS_DIR,
     index_file
 )
+import os
+from fastapi.staticfiles import StaticFiles
+
 
 
 app = FastAPI(
@@ -21,7 +24,9 @@ app = FastAPI(
     description="Upload documents and ask questions about their content.",
     version="1.0.0"
 )
-
+if os.path.isdir("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4200"],
