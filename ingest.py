@@ -1,15 +1,16 @@
-
 import csv
 import io
+import os
 from pathlib import Path
 
 import docx2txt
 from dotenv import load_dotenv
+from fastembed import TextEmbedding
 from pypdf import PdfReader
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
@@ -23,13 +24,40 @@ CHROMA_DIR = str(BASE_DIR / "chroma_db")
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".csv", ".txt"}
 
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_CACHE_DIR = os.getenv(
+    "EMBEDDING_CACHE_DIR",
+    str(Path.home() / ".cache" / "ai-document-agent-models")
+)
+
 # Create the required directories if they don't exist.
 DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+
+class FastEmbedEmbeddings(Embeddings):
+    """Small, low-memory embedder (ONNX) with the same model as before."""
+
+    def __init__(self, model_name: str, cache_dir: str):
+        self._model = TextEmbedding(
+            model_name=model_name,
+            cache_dir=cache_dir
+        )
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [
+            vector.tolist()
+            for vector in self._model.embed(texts, batch_size=16)
+        ]
+
+    def embed_query(self, text: str) -> list[float]:
+        return next(iter(self._model.embed([text]))).tolist()
+
+
 # Embedding model: runs locally.
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+embeddings = FastEmbedEmbeddings(
+    model_name=EMBEDDING_MODEL,
+    cache_dir=EMBEDDING_CACHE_DIR
 )
 
 # All documents use the same persistent ChromaDB collection.
@@ -164,6 +192,19 @@ def index_local_documents() -> None:
 
         except Exception as exc:
             print(f"Failed to index {filename}: {exc}")
+
+
+def index_if_empty() -> None:
+    """On a fresh start (empty disk), index the sample documents."""
+
+    try:
+        existing = vector_store.get(limit=1)
+        if existing and existing.get("ids"):
+            return
+    except Exception as exc:
+        print(f"Could not check the vector store: {exc}")
+
+    index_local_documents()
 
 
 if __name__ == "__main__":

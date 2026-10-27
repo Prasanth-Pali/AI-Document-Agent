@@ -1,32 +1,47 @@
-
-from datetime import datetime, timezone
+import base64
+import os
+import secrets
+import threading
+import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
-import traceback
-from fastapi import FastAPI, File, HTTPException, UploadFile
+
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agent import answer_question
+from document_list import build_document_list
 from ingest import (
     ALLOWED_EXTENSIONS,
-    DOCUMENTS_DIR,
     UPLOADS_DIR,
-    index_file
+    index_file,
+    index_if_empty
 )
-import os
-from fastapi.staticfiles import StaticFiles
 
+# Read after the imports so values from .env are already loaded.
+APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Index the sample documents in the background if the index is empty.
+    threading.Thread(target=index_if_empty, daemon=True).start()
+    yield
 
 
 app = FastAPI(
     title="AI Document Assistant API",
     description="Upload documents and ask questions about their content.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
-if os.path.isdir("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
-    
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4200"],
@@ -35,16 +50,42 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+@app.middleware("http")
+async def basic_auth(request: Request, call_next):
+    """Ask for a password on every route when APP_PASSWORD is set."""
+
+    if (
+        not APP_PASSWORD
+        or request.method == "OPTIONS"
+        or request.url.path == "/health"
+    ):
+        return await call_next(request)
+
+    header = request.headers.get("Authorization", "")
+
+    if header.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(header[6:]).decode("utf-8")
+            _, _, password = decoded.partition(":")
+
+            if secrets.compare_digest(
+                password.encode("utf-8"),
+                APP_PASSWORD.encode("utf-8")
+            ):
+                return await call_next(request)
+        except Exception:
+            pass
+
+    return Response(
+        content="Authentication required",
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="AI Document Agent"'}
+    )
 
 
 class ChatRequest(BaseModel):
     question: str
-
-
-@app.get("/")
-def home():
-    return {"message": "AI Document Assistant API is running"}
 
 
 @app.get("/health")
@@ -73,7 +114,7 @@ async def upload_document(file: UploadFile = File(...)):
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
-            detail="File size must not exceed 10 MB."
+            detail="File size must not exceed 5 MB."
         )
 
     # Each upload receives a unique ID and its own folder.
@@ -119,61 +160,7 @@ async def upload_document(file: UploadFile = File(...)):
 def list_documents():
     """List local sample documents and files uploaded through the UI."""
 
-    documents = []
-
-    # Existing local/sample documents.
-    for file_path in DOCUMENTS_DIR.rglob("*"):
-        if (
-            not file_path.is_file()
-            or file_path.suffix.lower() not in ALLOWED_EXTENSIONS
-        ):
-            continue
-
-        stat = file_path.stat()
-
-        documents.append({
-            "document_id": f"local-{file_path.name}",
-            "filename": file_path.name,
-            "file_type": file_path.suffix.lower(),
-            "size_bytes": stat.st_size,
-            "location": "local",
-            "uploaded_at": datetime.fromtimestamp(
-                stat.st_mtime, timezone.utc
-            ).isoformat()
-        })
-
-    # Original files uploaded through the UI.
-    for file_path in UPLOADS_DIR.glob("*/*"):
-        if (
-            not file_path.is_file()
-            or file_path.suffix.lower() not in ALLOWED_EXTENSIONS
-        ):
-            continue
-
-        stat = file_path.stat()
-
-        documents.append({
-            "document_id": file_path.parent.name,
-            "filename": file_path.name,
-            "file_type": file_path.suffix.lower(),
-            "size_bytes": stat.st_size,
-            "location": "uploaded",
-            "uploaded_at": datetime.fromtimestamp(
-                stat.st_mtime, timezone.utc
-            ).isoformat()
-        })
-
-    documents.sort(
-        key=lambda document: document["filename"].lower()
-    )
-
-    return {
-        "total_documents": len(documents),
-        "documents": documents
-    }
-
-
-
+    return build_document_list()
 
 
 @app.post("/api/chat")
@@ -203,3 +190,13 @@ def chat(request: ChatRequest):
             status_code=500,
             detail=str(exc)
         ) from exc
+
+
+# Serve the built Angular app. This MUST stay at the bottom, after all routes.
+if os.path.isdir("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+else:
+
+    @app.get("/")
+    def home():
+        return {"message": "AI Document Assistant API is running"}

@@ -1,4 +1,3 @@
-
 fastapi
 uvicorn[standard]
 python-multipart
@@ -9,6 +8,5 @@ python-dotenv
 langchain
 langchain-groq
 langchain-chroma
-langchain-huggingface
 langchain-text-splitters
-sentence-transformers
+fastembed
