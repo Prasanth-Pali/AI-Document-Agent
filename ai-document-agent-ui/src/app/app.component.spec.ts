@@ -1,10 +1,18 @@
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { AppComponent } from './app.component';
+import { DocumentService } from './services/document.service';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
+      providers: [{
+        provide: DocumentService,
+        useValue: {
+          getDocuments: () => of({ total_documents: 0, documents: [] })
+        }
+      }]
     }).compileComponents();
   });
 
@@ -20,10 +28,10 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('ai-document-agent-ui');
   });
 
-  it('should render title', () => {
+  it('should render the dashboard', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, ai-document-agent-ui');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Dashboard');
   });
 });

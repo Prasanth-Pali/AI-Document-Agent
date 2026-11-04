@@ -165,6 +165,10 @@ python -m compileall -q .
 
 `app.py` is a standalone retrieval-chain example; the web UI uses `api.py` and the agent in `agent.py`. `view_chroma.py` is a local vector-store inspection utility.
 
+## CI
+
+GitHub Actions runs on pushes and pull requests targeting `main`, and can also be started manually from the Actions tab. The workflow builds the Angular frontend, runs its unit tests, checks Python syntax, and builds the Docker image without publishing it. Container publishing and deployment are not configured; they require a chosen registry or deployment target and credentials.
+
 ## Security and data
 
 - Keep `.env` private; never commit Groq credentials or a production password.
