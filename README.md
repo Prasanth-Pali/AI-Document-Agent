@@ -1,323 +1,178 @@
-# 📄 AI Document Agent
+# AI Document Agent
 
-An AI-powered document question-answering application that allows users to upload documents and ask natural-language questions about their content. The application uses **Retrieval-Augmented Generation (RAG)**, LangChain tools, an LLM, and vector search to retrieve relevant information and generate contextual answers.
+AI Document Agent is a document question-answering app. Upload PDF, DOCX, CSV, or TXT files, then ask questions about their contents through an Angular dashboard. A FastAPI backend extracts and chunks text, creates local embeddings, searches ChromaDB, and uses a Groq-hosted language model to generate answers.
 
-## ✨ Features
+## Features
 
-- 📤 **Document Upload** — Upload PDF, DOCX, CSV, and TXT files.
-- 🔍 **Document Processing** — Extract text, split it into manageable chunks, and generate embeddings.
-- 🧠 **RAG Pipeline** — Retrieve relevant document chunks to provide context-aware answers.
-- 🤖 **AI Agent** — Use LangChain tools to retrieve document information and support question answering.
-- 💬 **AI Chat Interface** — Ask questions in natural language and view generated answers.
-- 🗂️ **Document Management** — View uploaded documents and their metadata.
-- 🧮 **Vector Search** — Store and search document embeddings using ChromaDB.
-- ⚡ **FastAPI Backend** — Expose REST APIs for document upload, retrieval, and AI chat.
-- 🎨 **Angular Dashboard** — Responsive dashboard with a red-and-blue theme.
-- 🔐 **Environment-Based Configuration** — Store API credentials outside the source code.
-- 💾 **Persistent Vector Storage** — Retain indexed document vectors locally between application restarts.
+- Upload supported documents up to **5 MB** each.
+- Extract and chunk document text (500-character chunks with 100-character overlap).
+- Create embeddings locally with `sentence-transformers/all-MiniLM-L6-v2` through FastEmbed.
+- Store document chunks and metadata in a persistent ChromaDB collection.
+- List sample and uploaded documents and ask questions through the web dashboard.
+- Optionally protect API routes with HTTP Basic authentication using `APP_PASSWORD`.
+- Serve the Angular production build from the FastAPI application.
 
-## 🛠️ Technology Stack
-
-| Component | Technologies |
-|---|---|
-| Frontend | Angular, TypeScript, HTML, CSS |
-| Backend | Python, FastAPI |
-| AI Framework | LangChain |
-| Language Model | Groq-hosted LLM through `ChatGroq` |
-| Embeddings | Hugging Face Sentence Transformers |
-| Embedding Model | `sentence-transformers/all-MiniLM-L6-v2` |
-| Vector Database | ChromaDB |
-| Document Processing | PyPDF, docx2txt, Python CSV processing |
-| API Communication | REST APIs, HTTP, JSON |
-| Environment Configuration | Python dotenv |
-
-## 🏗️ Architecture
+## Architecture
 
 ```text
-┌──────────────────────────────┐
-│       Angular Dashboard      │
-│                              │
-│  Upload Documents            │
-│  View Uploaded Documents     │
-│  Ask Questions               │
-└──────────────┬───────────────┘
-               │ HTTP / REST
-               ▼
-┌──────────────────────────────┐
-│        FastAPI Backend       │
-│                              │
-│  Document Upload API         │
-│  Document Listing API        │
-│  AI Chat API                 │
-└──────────────┬───────────────┘
-               │
-       ┌───────┴────────┐
-       ▼                ▼
-┌──────────────┐  ┌────────────────┐
-│ Document     │  │ LangChain      │
-│ Ingestion    │  │ AI Agent       │
-└──────┬───────┘  └───────┬────────┘
-       │                  │
-       ▼                  ▼
-┌──────────────┐  ┌────────────────┐
-│ Hugging Face │  │ LangChain      │
-│ Embeddings   │  │ Document Tools │
-└──────┬───────┘  └───────┬────────┘
-       │                  │
-       ▼                  ▼
-┌──────────────┐  ┌────────────────┐
-│ ChromaDB     │  │ Document Search│
-│ Vector Store │  │ and Retrieval  │
-└──────────────┘  └───────┬────────┘
-                          ▼
-                  ┌────────────────┐
-                  │ Groq LLM        │
-                  │ Answer Generation│
-                  └────────────────┘
+Angular dashboard
+       │ HTTP
+       ▼
+FastAPI (api.py) ── LangChain agent/tools ── Groq API
+       │
+       ├── document extraction and local FastEmbed embeddings
+       ├── ChromaDB (chroma_db/)
+       └── original uploads (uploads/)
 ```
 
-## 🔄 How It Works
+The embedding model runs locally; chat completions require a Groq API key and network access. The chat model is currently configured in `agent.py` as `openai/gpt-oss-20b`.
 
-### 1. Document Upload
+## Requirements
 
-The user uploads a supported document through the Angular dashboard. The frontend sends the file to the FastAPI backend using a multipart HTTP request.
-
-### 2. Text Extraction and Chunking
-
-The backend extracts text from the uploaded document. The text is divided into smaller chunks using `RecursiveCharacterTextSplitter`.
-
-Current chunking configuration:
-
-- Chunk size: `500` characters
-- Chunk overlap: `100` characters
-
-Chunking allows the application to index and retrieve relevant sections instead of processing an entire document at once.
-
-### 3. Embedding Generation
-
-The application uses the Hugging Face embedding model `sentence-transformers/all-MiniLM-L6-v2` to convert document chunks into vector representations.
-
-The embedding model runs locally.
-
-### 4. Vector Storage
-
-The generated embeddings and associated document metadata are stored in a persistent ChromaDB collection named `uploaded_documents`.
-
-### 5. Question Processing
-
-When the user submits a question, the AI agent can use its LangChain tools to retrieve document information and search the vector database for relevant content.
-
-### 6. Context Retrieval and Answer Generation
-
-The retrieved document chunks provide context for answering the user's question. The Groq-hosted language model generates the final natural-language response.
-
-### 7. Response Display
-
-FastAPI returns the answer to the Angular frontend, which displays it in the chat interface.
-
-## 📁 Project Structure
-
-```text
-AI-Document-Agent/
-│
-├── documents/
-│   └── company_policy.txt
-│
-├── uploads/
-│   └── Uploaded documents
-│
-├── chroma_db/
-│   └── Persistent vector database
-│
-├── ai-document-agent-ui/
-│   ├── src/
-│   │   └── app/
-│   │       ├── pages/
-│   │       │   └── dashboard/
-│   │       │       ├── dashboard.component.ts
-│   │       │       ├── dashboard.component.html
-│   │       │       └── dashboard.component.css
-│   │       ├── services/
-│   │       │   └── document.ts
-│   │       ├── app.ts
-│   │       ├── app.html
-│   │       └── app.config.ts
-│   ├── package.json
-│   └── angular.json
-│
-├── .env
-├── .gitignore
-├── requirements.txt
-├── ingest.py
-├── tools.py
-├── agent.py
-├── app.py
-├── api.py
-└── README.md
-```
-
-**Note:** `uploads/`, `chroma_db/`, and `.env` are local runtime resources and should not be committed to GitHub. The structure above describes the intended layout; generated files and local folders may differ.
-
-## ⚙️ Prerequisites
-
-Install the following before running the project:
-
-- Python 3.10 or a compatible version supported by the installed dependencies
-- Node.js and npm
-- Angular CLI
+- Python 3.11
+- Node.js 20 and npm (for frontend development or Docker builds)
 - A Groq API key
-- Git
+- Docker Engine with Docker Compose (optional, for containerized use)
 
-## 🚀 Getting Started
+## Run locally
 
-### 1. Clone the Repository
+1. Clone the repository and enter its root directory:
 
-```bash
-git clone https://github.com/Prasanth-Pali/AI-Document-Agent.git
-cd AI-Document-Agent
+   ```sh
+   git clone https://github.com/Prasanth-Pali/AI-Document-Agent.git
+   cd AI-Document-Agent
+   ```
+
+2. Create and activate a Python virtual environment, then install backend dependencies:
+
+   ```sh
+   python -m venv .venv
+   ```
+
+   PowerShell:
+
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+   macOS/Linux:
+
+   ```sh
+   source .venv/bin/activate
+   ```
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+
+3. Copy `.env.example` to `.env` in the repository root and set `GROQ_API_KEY`. In PowerShell, use `Copy-Item .env.example .env`; in macOS/Linux, use `cp .env.example .env`. `APP_PASSWORD` is optional; when non-empty, the API requires HTTP Basic authentication for all routes except `/health` and `OPTIONS`.
+
+4. Start the API from the repository root:
+
+   ```sh
+   uvicorn api:app --reload
+   ```
+
+5. In another terminal, install and start the Angular development server:
+
+   ```sh
+   cd ai-document-agent-ui
+   npm ci
+   npm start
+   ```
+
+   Open <http://localhost:4200>. In development, the UI calls the API at `http://127.0.0.1:8000`.
+
+The API is available at <http://127.0.0.1:8000>; interactive documentation is at `/docs` and `/redoc`. The public health endpoint is `/health`.
+
+## Run with Docker Compose
+
+1. Create `.env` in the repository root as described above and set `GROQ_API_KEY`. Set a strong `APP_PASSWORD` before exposing the service beyond a trusted local environment.
+2. Build and start the app:
+
+   ```sh
+   docker compose up --build
+   ```
+
+3. Open <http://localhost:7860>. Stop the service with `Ctrl+C`; use `docker compose down` to remove the running container.
+
+The image builds the Angular frontend and serves it from FastAPI. Compose persists uploaded originals, the ChromaDB index, and the embedding model cache in named volumes. To remove this data as well as the container, run `docker compose down --volumes`. The first image build downloads the embedding model and therefore needs network access.
+
+To change the published port, set `HOST_PORT` (for example, `HOST_PORT=8080`) in `.env`; the app will then be available at `http://localhost:8080`.
+
+To build and run without Compose:
+
+```sh
+docker build -t ai-document-agent .
+docker run --rm -p 7860:7860 --env-file .env \
+  -v ai-document-agent-uploads:/home/user/app/uploads \
+  -v ai-document-agent-chroma:/home/user/app/chroma_db \
+  -v ai-document-agent-models:/home/user/models \
+  ai-document-agent
 ```
 
-### 2. Set Up the Python Backend
+## API
 
-Create a virtual environment:
-
-```bash
-python -m venv .venv
-```
-
-Activate it on Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Install the dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment Variables
-
-Create a `.env` file in the backend project root:
-
-```env
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=your_supported_groq_model
-API_BASE_URL=http://127.0.0.1:8000
-```
-
-Replace the example values with your own credentials and a Groq-supported model identifier.
-
-**Security:** Never commit your real API key to GitHub. Keep `.env` in `.gitignore`.
-
-### 4. Start the FastAPI Backend
-
-From the directory containing `api.py`, run:
-
-```bash
-uvicorn api:app --reload
-```
-
-The backend runs at:
-
-- API base URL: `http://127.0.0.1:8000`
-- Swagger documentation: `http://127.0.0.1:8000/docs`
-- ReDoc documentation: `http://127.0.0.1:8000/redoc`
-
-### 5. Start the Angular Frontend
-
-Open a second terminal:
-
-```bash
-cd ai-document-agent-ui
-npm install
-ng serve
-```
-
-Open the dashboard:
-
-`http://localhost:4200`
-
-Keep both the FastAPI backend and Angular development server running while using the application.
-
-## 🔌 API Endpoints
-
-| Method | Endpoint | Purpose |
+| Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/documents` | Retrieve the uploaded document list |
-| `POST` | `/api/documents/upload` | Upload and index a document |
-| `POST` | `/api/chat` | Submit a question to the AI agent |
+| `GET` | `/health` | Health check (does not require `APP_PASSWORD`) |
+| `GET` | `/api/documents` | List sample and uploaded documents |
+| `POST` | `/api/documents/upload` | Upload and index a document (`multipart/form-data`, field `file`) |
+| `POST` | `/api/chat` | Ask a question (`{"question": "..."}`) |
 
-### Upload a Document
+Uploaded file types are PDF, DOCX, CSV, and TXT. The server enforces the 5 MB limit regardless of client-side validation. FastAPI's interactive API documentation is available at `/docs`.
 
-Endpoint: `POST /api/documents/upload`
+## Repository layout
 
-Content type: `multipart/form-data`
-
-Form field: `file`
-
-Supported formats: PDF, DOCX, CSV, and TXT.
-
-### Retrieve Documents
-
-Endpoint: `GET /api/documents`
-
-Returns document metadata such as document ID, filename, file type, size, and upload information.
-
-### Ask a Question
-
-Endpoint: `POST /api/chat`
-
-Example request:
-
-```json
-{
-  "question": "What is the company's leave policy?"
-}
+```text
+.
+├── agent.py                    # LangChain agent and Groq model
+├── api.py                      # FastAPI endpoints and static frontend hosting
+├── app.py                      # Standalone RAG example
+├── document_list.py            # Sample and uploaded document listing
+├── ingest.py                   # Extraction, embedding, and ChromaDB indexing
+├── tools.py                    # Agent tools for listing and searching documents
+├── documents/                  # Sample documents indexed on first startup
+├── ai-document-agent-ui/       # Angular application
+├── Dockerfile                  # Multi-stage frontend/backend image
+├── compose.yaml                # App service and persistent data volumes
+└── requirements.txt            # Python dependencies
 ```
 
-The response contains the submitted question and the generated answer. Exact response fields depend on the backend implementation.
+Runtime uploads, vector data, model cache, environment secrets, and frontend build output are local/container data and should not be committed. The root `.gitignore` and `.dockerignore` exclude generated and sensitive files.
 
-## 🧪 Development Notes
+## Development checks
 
-- Uploaded documents are indexed by the ingestion pipeline.
-- `ingest.py` can also be used to index local sample documents when supported by its current implementation.
-- `tools.py` contains the document retrieval tools used by the agent.
-- `agent.py` handles the LangChain agent workflow.
-- `app.py` is a separate basic RAG demonstration; the Angular application communicates with `api.py`.
-- ChromaDB stores vector data, while the original uploaded files are stored separately.
-- The current chat interface displays the latest answer; persistent conversations and chat history are not yet implemented.
+Build the frontend:
 
-## 🔮 Future Enhancements
+```sh
+cd ai-document-agent-ui
+npm ci
+npm run build
+```
 
-- 💬 Conversation history with multiple messages per chat.
-- 💾 Persistent chat and message storage.
-- 🗃️ Document-specific question answering and filtering.
-- 📚 Source citations showing which document sections support an answer.
-- 🔐 Authentication and user-specific document access.
-- 🧹 Document deletion with corresponding vector-store cleanup.
-- 🐳 Docker containerization.
-- 🚀 CI/CD with GitHub Actions.
-- ☁️ Deployment to a cloud platform.
-- 📝 Improved error handling, logging, and monitoring.
-- 🧪 Automated backend and frontend tests.
+Run frontend unit tests in an environment with Chrome available:
 
-## 🔒 Security Considerations
+```sh
+npm test -- --watch=false --browsers=ChromeHeadless
+```
 
-- Store credentials in environment variables.
-- Validate file extensions, content, and file sizes on the server.
-- Restrict access to uploaded documents and vector data.
-- Configure CORS for trusted frontend origins.
-- Add authentication and authorization before exposing the application publicly.
-- Avoid logging API keys, confidential document contents, or sensitive user information.
+From the repository root, check Python syntax with:
 
-## 👨‍💻 Author
+```sh
+python -m compileall -q .
+```
 
-**Prasanth Pali**
+`app.py` is a standalone retrieval-chain example; the web UI uses `api.py` and the agent in `agent.py`. `view_chroma.py` is a local vector-store inspection utility.
 
-GitHub: [Prasanth-Pali](https://github.com/Prasanth-Pali)
+## Security and data
 
----
+- Keep `.env` private; never commit Groq credentials or a production password.
+- Configure a strong `APP_PASSWORD` before exposing the service. Authentication is shared by the app and is not user-specific authorization.
+- Uploaded files and the ChromaDB index are stored on local disk or in the configured Docker volumes. Back them up as needed and restrict access to the host.
+- `/health` is intentionally unauthenticated. The API's CORS allowlist currently permits the Angular development origin `http://localhost:4200`.
+- Do not use the sample configuration as a substitute for production security review or deployment hardening.
 
-*Built to explore document ingestion, embeddings, vector search, RAG, LangChain agents, FastAPI, and Angular integration in a practical AI application.*
+## License
+
+No license file is currently included in this repository.

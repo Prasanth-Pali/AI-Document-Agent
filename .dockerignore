@@ -1,9 +1,12 @@
-.env
 .git
+.gitignore
+.env
+.env.*
 .venv
 __pycache__/
+*.py[cod]
 chroma_db/
 uploads/
-ai-document-agent-ui/node_modules/
-ai-document-agent-ui/dist/
-ai-document-agent-ui/.angular/
+**/node_modules/
+**/dist/
+**/.angular/

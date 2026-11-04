@@ -67,8 +67,8 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      this.errorMessage = 'File size must not exceed 10 MB.';
+    if (file.size > 5 * 1024 * 1024) {
+      this.errorMessage = 'File size must not exceed 5 MB.';
       input.value = '';
       return;
     }

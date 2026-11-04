@@ -1,11 +1,10 @@
 # ---------- Stage 1: build the Angular frontend ----------
-FROM node:22-alpine AS frontend
+FROM node:20-alpine AS frontend
 WORKDIR /ui
-COPY ai-document-agent-ui/package*.json ./
-RUN npm install
+COPY ai-document-agent-ui/package.json ai-document-agent-ui/package-lock.json ./
+RUN npm ci
 COPY ai-document-agent-ui/ ./
 RUN npm run build
-RUN mkdir /out && cp -r dist/*/browser/. /out/
 
 # ---------- Stage 2: Python backend (no PyTorch) ----------
 FROM python:3.11-slim
@@ -24,7 +23,7 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='se
 
 COPY --chown=user *.py ./
 COPY --chown=user documents ./documents
-COPY --chown=user --from=frontend /out ./static
+COPY --chown=user --from=frontend /ui/dist/ai-document-agent-ui/browser ./static
 RUN mkdir -p uploads chroma_db
 
 EXPOSE 7860
