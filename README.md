@@ -167,7 +167,7 @@ python -m compileall -q .
 
 ## CI
 
-GitHub Actions runs on pushes and pull requests targeting `main`, and can also be started manually from the Actions tab. The workflow builds the Angular frontend, runs its unit tests, checks Python syntax, and builds the Docker image without publishing it. Container publishing and deployment are not configured; they require a chosen registry or deployment target and credentials.
+GitHub Actions runs on pushes and pull requests targeting `main`, and can also be started manually from the Actions tab. The workflow builds and tests the Angular frontend and checks Python syntax. It does not build or publish a Docker image. Deployment is not configured.
 
 ## Security and data
 
